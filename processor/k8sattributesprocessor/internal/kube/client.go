@@ -1040,6 +1040,16 @@ func (c *WatchClient) extractPodAttributes(pod *api_v1.Pod) map[string]string {
 		copyLabel(pod, tags, "app.kubernetes.io/version", conventions.ServiceVersionKey)
 	}
 
+	if c.Rules.OtelAnnotations {
+		r := OtelAnnotations()
+		if !disableLegacy {
+			r.extractFromPodMetadata(pod.Annotations, tags, K8SPodAnnotations)
+		}
+		if enableStable {
+			r.extractFromPodMetadata(pod.Annotations, tags, conventions.K8SPodAnnotation)
+		}
+	}
+
 	return tags
 }
 
@@ -1137,7 +1147,7 @@ func removeUnnecessaryPodData(pod *api_v1.Pod, rules ExtractionRules) *api_v1.Po
 		transformedPod.Labels = maps.Clone(pod.Labels)
 	}
 
-	if len(rules.Annotations) > 0 {
+	if len(rules.Annotations) > 0 || rules.OtelAnnotations {
 		transformedPod.Annotations = maps.Clone(pod.Annotations)
 	}
 
@@ -1234,7 +1244,7 @@ func (c *WatchClient) extractPodContainersAttributes(pod *api_v1.Pod) PodContain
 			container.Name = containerName
 		}
 		if c.Rules.ServiceInstanceID {
-			container.ServiceInstanceID = automaticServiceInstanceID(pod, containerName)
+			container.ServiceInstanceID = automaticServiceInstanceID(c.Rules.OtelAnnotations, pod, containerName)
 		}
 		containerID := apiStatus.ContainerID
 		// Remove container runtime prefix
@@ -1970,7 +1980,12 @@ func ignoreDeletedFinalStateUnknown(obj any) any {
 	return obj
 }
 
-func automaticServiceInstanceID(pod *api_v1.Pod, containerName string) string {
+func automaticServiceInstanceID(enableOtelAnnotations bool, pod *api_v1.Pod, containerName string) string {
+	if enableOtelAnnotations {
+		if val, ok := pod.Annotations["resource.opentelemetry.io/service.instance.id"]; ok {
+			return val
+		}
+	}
 	resNames := []string{pod.Namespace, pod.Name, containerName}
 	return strings.Join(resNames, ".")
 }

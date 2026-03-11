@@ -711,7 +711,8 @@ func TestExtractionRules(t *testing.T) {
 		ServiceName:       true,
 		ServiceVersion:    true,
 		ServiceInstanceID: true,
-		Annotations:       []FieldExtractionRule{OtelAnnotations()},
+		OtelAnnotations:   true,
+		Annotations:       []FieldExtractionRule{},
 	}
 
 	testCases := []struct {
@@ -1093,8 +1094,29 @@ func TestExtractionRules(t *testing.T) {
 			},
 		},
 		{
+			name:  "service-attributes-annotation",
+			rules: serviceRules,
+			additionalAnnotations: map[string]string{
+				"resource.opentelemetry.io/service.instance.id": "annotation-id",
+				"resource.opentelemetry.io/service.version":     "annotation-version",
+				"resource.opentelemetry.io/service.name":        "annotation-service",
+				"resource.opentelemetry.io/service.namespace":   "annotation-namespace",
+			},
+			attributes: map[string]string{
+				"service.instance.id": "annotation-id",
+				"service.name":        "annotation-service",
+				"service.version":     "annotation-version",
+				"service.namespace":   "annotation-namespace",
+			},
+		},
+		{
 			name:  "service-attributes-annotation-override",
 			rules: serviceRules,
+			additionalLabels: map[string]string{
+				"app.kubernetes.io/instance": "instance-service",
+				"app.kubernetes.io/name":     "label-service",
+				"app.kubernetes.io/version":  "label-version",
+			},
 			additionalAnnotations: map[string]string{
 				"resource.opentelemetry.io/service.instance.id": "annotation-id",
 				"resource.opentelemetry.io/service.version":     "annotation-version",
@@ -2436,6 +2458,9 @@ func Test_extractPodContainersAttributes(t *testing.T) {
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "test-pod",
 			Namespace: "test-namespace",
+			Annotations: map[string]string{
+				"resource.opentelemetry.io/service.instance.id": "annotation-id",
+			},
 		},
 		Spec: api_v1.PodSpec{
 			Containers: []api_v1.Container{
@@ -2533,6 +2558,31 @@ func Test_extractPodContainersAttributes(t *testing.T) {
 					"container2":     {ServiceInstanceID: "test-namespace.test-pod.container2", ServiceVersion: "sha256:430ac608abaa332de4ce45d68534447c7a206edc5e98aaff9923ecc12f8a80d9"},
 					"container3":     {ServiceInstanceID: "test-namespace.test-pod.container3", ServiceVersion: "1.0@sha256:4b0b1b6f6cdd3e5b9e55f74a1e8d19ed93a3f5a04c6b6c3c57c4e6d19f6b7c4d"},
 					"init_container": {ServiceInstanceID: "test-namespace.test-pod.init_container"},
+				},
+			},
+		},
+		{
+			name: "automatic-container-level-attributes-otel-annotation-override",
+			rules: ExtractionRules{
+				ServiceNamespace:  true,
+				ServiceName:       true,
+				ServiceVersion:    true,
+				ServiceInstanceID: true,
+				OtelAnnotations:   true,
+			},
+			pod: &pod,
+			want: PodContainers{
+				ByID: map[string]*Container{
+					"container1-id-123":     {ServiceInstanceID: "annotation-id", ServiceVersion: "0.1.0"},
+					"container2-id-456":     {ServiceInstanceID: "annotation-id", ServiceVersion: "sha256:430ac608abaa332de4ce45d68534447c7a206edc5e98aaff9923ecc12f8a80d9"},
+					"container3-id-abc":     {ServiceInstanceID: "annotation-id", ServiceVersion: "1.0@sha256:4b0b1b6f6cdd3e5b9e55f74a1e8d19ed93a3f5a04c6b6c3c57c4e6d19f6b7c4d"},
+					"init-container-id-789": {ServiceInstanceID: "annotation-id"},
+				},
+				ByName: map[string]*Container{
+					"container1":     {ServiceInstanceID: "annotation-id", ServiceVersion: "0.1.0"},
+					"container2":     {ServiceInstanceID: "annotation-id", ServiceVersion: "sha256:430ac608abaa332de4ce45d68534447c7a206edc5e98aaff9923ecc12f8a80d9"},
+					"container3":     {ServiceInstanceID: "annotation-id", ServiceVersion: "1.0@sha256:4b0b1b6f6cdd3e5b9e55f74a1e8d19ed93a3f5a04c6b6c3c57c4e6d19f6b7c4d"},
+					"init_container": {ServiceInstanceID: "annotation-id"},
 				},
 			},
 		},

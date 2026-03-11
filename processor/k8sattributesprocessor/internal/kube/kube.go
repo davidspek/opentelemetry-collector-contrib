@@ -259,6 +259,7 @@ type ExtractionRules struct {
 
 	Annotations                  []FieldExtractionRule
 	Labels                       []FieldExtractionRule
+	OtelAnnotations              bool
 	DeploymentNameFromReplicaSet bool
 }
 

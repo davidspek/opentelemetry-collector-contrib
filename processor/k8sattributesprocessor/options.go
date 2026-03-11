@@ -224,7 +224,7 @@ func withExtractMetadata(fields ...string) option {
 func withOtelAnnotations(enabled bool) option {
 	return func(p *kubernetesprocessor) error {
 		if enabled {
-			p.rules.Annotations = append(p.rules.Annotations, kube.OtelAnnotations())
+			p.rules.OtelAnnotations = true
 		}
 		return nil
 	}

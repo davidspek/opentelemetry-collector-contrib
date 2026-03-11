@@ -787,14 +787,6 @@ func TestOtelAnnotations(t *testing.T) {
 		{
 			name:    "with otel annotations",
 			enabled: true,
-			wantAnnotations: []kube.FieldExtractionRule{
-				{
-					Name:                 "$1",
-					KeyRegex:             regexp.MustCompile(`^resource\.opentelemetry\.io/(.+)$`),
-					HasKeyRegexReference: true,
-					From:                 kube.MetadataFromPod,
-				},
-			},
 		},
 	}
 	for _, tt := range tests {
@@ -803,7 +795,7 @@ func TestOtelAnnotations(t *testing.T) {
 			rules := withOtelAnnotations(tt.enabled)
 			err := rules(&p)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantAnnotations, p.rules.Annotations)
+			assert.Equal(t, tt.enabled, p.rules.OtelAnnotations)
 		})
 	}
 }
